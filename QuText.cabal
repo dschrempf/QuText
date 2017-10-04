@@ -1,0 +1,77 @@
+name:                QuText
+version:             0.1.0.0
+-- synopsis:
+description:
+  QuText provides a simple framework to prepare similar but slightly different
+  text files for different targets. This may be config files that differ in some
+  lines depending on the host name or a welcome message that is adjusted
+  according to the user's class.
+
+  The idea is, that the text file can be edited in the respective mode (e.g.,
+  cabal mode for this file), but some lines will be changed by QuText according
+  to the need of the user. The changes should be specified within the comments
+  of the edited file (i.e., the command syntax for QuText depends on the comment
+  characters used by the text file).
+
+  Why do I write this? Because I use different computers, configuration files
+  are vastly similar but differ in a few lines. I always have to keep all
+  configuration files but would like to keep one file that stores all tweaks for
+  the different target systems.
+
+  Let those target systems be called targetA and targetB. The first version will
+  be a simple converter from *.XYZ for any target to *.XYZ for any other (or the
+  same) target.
+
+homepage:            https://github.com/dschrempf/QuText#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Dominik Schrempf
+maintainer:          dominik.schrempf@gmail.com
+copyright:           Dominik Schrempf (2017)
+category:            Web
+build-type:          Simple
+extra-source-files:  README.md
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     Act
+                     , Parse
+  build-depends:       base >= 4.7 && < 5
+                     , directory
+                     , optparse-applicative
+                     , parsec
+                     , temporary
+                     , unix
+  default-language:    Haskell2010
+
+executable QuText
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       QuText
+                     , base
+                     , directory
+                     , optparse-applicative
+                     , parsec
+                     , temporary
+                     , unix
+  default-language:    Haskell2010
+
+test-suite QuText-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs 
+  build-depends:       QuText
+                     , base
+                     , directory
+                     , optparse-applicative
+                     , parsec
+                     , temporary
+                     , unix
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/dschrempf/QuText
