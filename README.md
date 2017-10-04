@@ -1,7 +1,5 @@
 # QuText
 
-Map a quantum text file to a fixed target.
-
 QuText provides a simple framework to prepare similar but slightly different
 text files for different targets. This may be config files that differ in some
 lines depending on the host name or a welcome message that is adjusted
