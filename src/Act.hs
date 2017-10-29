@@ -24,8 +24,9 @@ comment string. The actions depend on source and destination.
 
 module Act where
 
-import           Data.List  (find, mapAccumL, stripPrefix)
-import           Data.Maybe (fromMaybe)
+import           Control.Monad.Trans.State
+import           Data.List                 (find, mapAccumL)
+import           Data.Maybe                (fromMaybe)
 import           Parse
 
 -- | Actions; either search for a command (i.e., don't act but watch out);
@@ -42,16 +43,22 @@ data QuTextState = QuTextState
                    { qtsTargets :: [Target]
                    , qtsSource  :: Source
                    , qtsDest    :: Dest
-                   , qtsAction  :: Action }
+                   , qtsAction  :: Action
+                   , qtsLines   :: [String] }
   deriving (Eq, Show)
+
+-- TODO: I included the file into QuTextState, but it may be better to 'fold'
+-- over the lines while keeping the state in mind.
+type QuText a = State QuTextState a
 
 -- | Process a file for a (possibly given) destination 'Dest'.
 processFile :: Maybe Dest -> String -> String
-processFile mbd f = unlines . processLines qts . lines $ f
+processFile mbd f = unlines . qtsLines $ execState processLines qts
   where ts = searchTargets f
         s = searchSource f
         d = fromMaybe (getDest s ts) mbd
-        qts = QuTextState ts s d Search
+        lns = lines f
+        qts = QuTextState ts s d Search lns
 
 testCmd :: Command -> Either a Instruction -> Bool
 testCmd c (Right i) = c == instrCmd i
@@ -78,11 +85,13 @@ getDest s [x, y]
 getDest _ _ = error "Destination could not be determined."
 
 -- TODO: Allow more complicated conversions.
-processLines :: QuTextState -> [String] -> [String]
-processLines state lns = snd $ mapAccumL processLine state lns
+processLines :: QuText ()
+processLines = return ()
+-- processLines lns = snd $ mapAccumL processLine state lns
 
+-- TODO: Check this function.
 processLine :: QuTextState -> String -> (QuTextState, String)
-processLine st@(QuTextState _ _ d a) ln =
+processLine st@(QuTextState _ _ d a _) ln =
   case a of
        Search -> case instructionParser ln of
          Right (Instruction Current _) ->
