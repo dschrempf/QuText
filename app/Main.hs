@@ -61,9 +61,10 @@ main = do
   let fn = fileName args
       fnBak = fn ++ ".bak"
       d = dest args
-  -- TODO: Add option to disable backups.
-  putStrLn $ "Creating backup: " ++ fn ++ " -> " ++ fnBak
-  copyFile fn fnBak
+  if noBackup args
+    then putStrLn "Omitting backup."
+    else do putStrLn $ "Creating backup: " ++ fn ++ " -> " ++ fnBak
+            copyFile fn fnBak
   f <- readFile fn
   tmpDir <- getCanonicalTemporaryDirectory
   (tmpFn, tmpFh) <- openTempFile tmpDir fn
@@ -83,14 +84,16 @@ parseQuTextArgs = execParser $ info (helper <*> quTextOptions)
     `mappend` header "QuText - quantum text mapper." )
 
 data QuTextArgs = QuTextArgs
-  { fileName     :: FilePath
-  , dest  :: Maybe Dest
+  { fileName :: FilePath
+  , dest     :: Maybe Dest
+  , noBackup :: Bool
   }
 
 quTextOptions :: Parser QuTextArgs
 quTextOptions = QuTextArgs
   <$> fileNameOpt
   <*> targetOpt
+  <*> noBackupOpt
 
 fileNameOpt :: Parser String
 fileNameOpt = strArgument
@@ -103,3 +106,9 @@ targetOpt = optional $ strOption
     `mappend` short 'd'
     `mappend` metavar "DESTINATION"
     `mappend` help "Specify a target the file should be tailored for (precedes inferred destination)")
+
+noBackupOpt :: Parser Bool
+noBackupOpt = flag False True
+  ( long "no-backup"
+    `mappend` short 'n'
+    `mappend` help "Suppress file backup" )

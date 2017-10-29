@@ -3,10 +3,10 @@
 echo This is a test file for QuText.
 
 # ..targets.. =schwarzbaer= =blaubaer=
-# ..current.. =schwarzbaer=
+# ..current.. =blaubaer=
 
 # ..only.. =schwarzbaer=
-echo This file is tailored for Schwarzbaer.
+#echo This file is tailored for Schwarzbaer.
 
 # ..only.. =blaubaer=
-#echo This file is tailored for Blaubaer.
+echo This file is tailored for Blaubaer.
