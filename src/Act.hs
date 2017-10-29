@@ -1,6 +1,7 @@
 {- |
    Module      :  Act
    Description :  Defines acts such as look, comment, uncomment.
+
    Copyright   :  (c) Dominik Schrempf 2017
    License     :  GPL-3
 
@@ -85,9 +86,13 @@ getDest s [x, y]
 getDest _ _ = error "Destination could not be determined."
 
 -- TODO: Allow more complicated conversions.
+-- TODO: Do this elegantly with the machinery of state transformers.
 processLines :: QuText ()
-processLines = return ()
--- processLines lns = snd $ mapAccumL processLine state lns
+processLines = do
+  s <- get
+  let lns  = qtsLines s
+      lns' = snd $ mapAccumL processLine s lns
+  put $ s {qtsLines = lns'}
 
 -- TODO: Check this function.
 processLine :: QuTextState -> String -> (QuTextState, String)
