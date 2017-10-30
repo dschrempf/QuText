@@ -26,8 +26,9 @@ comment string. The actions depend on source and destination.
 module Act where
 
 import           Control.Monad.Trans.State
-import           Data.List                 (find, mapAccumL)
+import           Data.List                 (find)
 import           Data.Maybe                (fromMaybe)
+import           Data.Traversable          (traverse)
 import           Parse
 
 -- | Actions; either search for a command (i.e., don't act but watch out);
@@ -41,25 +42,24 @@ data Action = Search | Comment | Uncomment
 -- target. Including the action 'Action' in here, would build the basis for a
 -- stateful processing.
 data QuTextState = QuTextState
-                   { qtsTargets :: [Target]
-                   , qtsSource  :: Source
-                   , qtsDest    :: Dest
-                   , qtsAction  :: Action
-                   , qtsLines   :: [String] }
+                   { qtsTargets     :: [Target]
+                   , qtsSource      :: Source
+                   , qtsDest        :: Dest
+                   , qtsAction      :: Action
+                   , qtsCommentChar :: Char }
   deriving (Eq, Show)
 
--- TODO: I included the file into QuTextState, but it may be better to 'fold'
--- over the lines while keeping the state in mind.
 type QuText a = State QuTextState a
 
 -- | Process a file for a (possibly given) destination 'Dest'.
 processFile :: Maybe Dest -> String -> String
-processFile mbd f = unlines . qtsLines $ execState processLines qts
+processFile mbd f = unlines $ evalState (traverse processLine lns) qts
   where ts = searchTargets f
         s = searchSource f
         d = fromMaybe (getDest s ts) mbd
         lns = lines f
-        qts = QuTextState ts s d Search lns
+        -- TODO: Allow different file types (comment types).
+        qts = QuTextState ts s d Search '#'
 
 testCmd :: Command -> Either a Instruction -> Bool
 testCmd c (Right i) = c == instrCmd i
@@ -85,41 +85,46 @@ getDest s [x, y]
   | otherwise = error $ "Source " ++ s ++ "differs from both targets " ++ x ++ " and " ++ y ++ "."
 getDest _ _ = error "Destination could not be determined."
 
--- TODO: Allow more complicated conversions.
--- TODO: Do this elegantly with the machinery of state transformers.
-processLines :: QuText ()
-processLines = do
-  s <- get
-  let lns  = qtsLines s
-      lns' = snd $ mapAccumL processLine s lns
-  put $ s {qtsLines = lns'}
-
--- TODO: Check this function.
-processLine :: QuTextState -> String -> (QuTextState, String)
-processLine st@(QuTextState _ _ d a _) ln =
+-- -- TODO: Allow more complicated conversions.
+processLine :: String -> QuText String
+processLine ln = do
+  st@(QuTextState _ _ d a _) <- get
   case a of
        Search -> case instructionParser ln of
-         Right (Instruction Current _) ->
-           let st' = st {qtsAction = Search}
-               ln' = "# ..current.. " ++ "=" ++ d ++ "="
-               in (st', ln')
+         Right (Instruction Current _) -> do
+           put $ st {qtsAction = Search}
+           return $ "# ..current.. " ++ "=" ++ d ++ "="
          Right (Instruction Only tgs) ->
            if d `elem` tgs
-           then (st{qtsAction = Uncomment}, ln)
-           else (st{qtsAction = Comment}, ln)
-         _ -> (st{qtsAction = Search}, ln)
-       Comment -> (st{qtsAction = Search}, comment ln)
-       Uncomment -> (st{qtsAction = Search}, uncomment ln)
+           then do
+             put $ st {qtsAction = Uncomment}
+             return ln
+           else do
+             put $ st {qtsAction = Comment}
+             return ln
+         _ -> do
+           put st {qtsAction = Search}
+           return ln
+       Comment -> do
+         put st {qtsAction = Search}
+         comment ln
+       Uncomment -> do
+         put st {qtsAction = Search}
+         uncomment ln
        -- _ -> error $ "Unknown action: " ++ show a
 
 -- TODO: More sophisticated comments.
--- TODO: Allow different file types.
-comment :: String -> String
-comment ln = if head ln == '#'
-             then ln
-             else ("#" ++) ln
+comment :: String -> QuText String
+comment ln = do
+  s <- get
+  let c = qtsCommentChar s
+  if head ln == c
+    then return ln
+    else return $ c : ln
 
-uncomment :: String -> String
-uncomment ln = if head ln == '#'
-               then tail ln
-               else ln
+uncomment :: String -> QuText String
+uncomment ln = do
+  s <- get
+  if head ln == qtsCommentChar s
+    then return $ tail ln
+    else return ln
